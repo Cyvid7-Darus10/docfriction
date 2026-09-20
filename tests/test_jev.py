@@ -95,7 +95,10 @@ def test_gives_up_after_max_retries(make_client):
     def handler(_request: httpx.Request, _body: dict) -> httpx.Response:
         return httpx.Response(529)
 
-    with make_client(handler, max_retries=1) as client, pytest.raises(JevError, match="2 attempts"):
+    with (
+        make_client(handler, max_retries=1) as client,
+        pytest.raises(JevError, match="after 2 attempts"),
+    ):
         client.evaluate("s", {"yn": noul("q")})
 
 
@@ -114,7 +117,7 @@ def test_non_retryable_http_error_surfaces_status(make_client):
     with make_client(handler) as client, pytest.raises(JevError) as info:
         client.evaluate("s", {"yn": noul("q")})
     assert info.value.status == 401
-    assert "bad key" in str(info.value)
+    assert "Check TYPESAFE_API_KEY" in str(info.value)
 
 
 def test_non_json_body_is_an_error(make_client):

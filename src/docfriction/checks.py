@@ -49,12 +49,13 @@ def static_findings(segment: Segment) -> tuple[Finding, ...]:
     findings: list[Finding] = []
     untagged = sum(1 for block in segment.code_blocks if not block.language)
     if untagged:
+        noun = "code block has" if untagged == 1 else "code blocks have"
         findings.append(
             Finding(
                 check="untagged_code_block",
                 source=STATIC_SOURCE,
-                detail=f"{untagged} code block(s) have no language tag, so readers cannot "
-                "tell shell from config or output",
+                detail=f"{untagged} {noun} no language tag, so readers cannot tell shell "
+                "from config or output",
             )
         )
     if not segment.has_code and len(segment.prose) < MIN_PROSE_CHARS:

@@ -13,7 +13,7 @@ uv sync --all-groups
 uv run pre-commit install   # optional but recommended
 ```
 
-You do not need a TypeSafe API key to develop. The whole test suite runs
+You don't need a TypeSafe API key to develop. The whole test suite runs
 against a mocked HTTP transport, and `docfriction <page> --dry-run` exercises
 fetching and segmentation without calling Jev.
 
@@ -76,8 +76,7 @@ sends anything to Jev.
 
 ## Security
 
-Please do not open public issues for security problems. See
-[SECURITY.md](SECURITY.md).
+Don't open public issues for security problems. See [SECURITY.md](SECURITY.md).
 
 ## Code of conduct
 

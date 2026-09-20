@@ -122,7 +122,7 @@ DevRel and docs teams. A typical log has:
 
 - the persona and the goal ("new backend developer, wants a first API call in 15 minutes")
 - one entry per step, with a timestamp or step number
-- a sentiment marker per step, usually a three-level scale (delighted / neutral / frustrated) or an emoji
+- a sentiment marker per step, usually a three-level scale (delighted, neutral, frustrated) or an emoji
 - what the author expected versus what happened
 - a severity or "would I have given up here?" judgment
 - a summary of the top friction points, with owners
@@ -155,13 +155,15 @@ Three things make Jev fit this better than a general LLM would:
 2. **Cost and speed.** At ~$0.0004 per step and ~100 ms, every page can be
    logged on every change. Human friction logs happen once per launch, if
    that.
-3. **No generation.** The output is a table of typed verdicts, not a paragraph
-   that has to be parsed. Structured-output error rate is zero by
-   construction.
+3. **No generation.** The output is a table of typed verdicts rather than a
+   paragraph that has to be parsed. TypeSafe reports a 0% structured-output
+   error rate; the answer schema makes an invalid value impossible, though
+   accuracy is a separate question (67.8% on their own four-workflow
+   benchmark).
 
 Jev doesn't replace the person who reads the page and decides what to
-rewrite. The report says which rubric item fired and how likely; a writer
-still has to look at the section.
+rewrite. The report says which rubric item fired and how likely Jev thinks it
+is; a writer still has to look at the section.
 
 ## 4. Design decisions in docfriction, traced to the research
 

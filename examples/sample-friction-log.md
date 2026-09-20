@@ -32,7 +32,7 @@ Steps: 4 · steps with friction: 3 · max severity: 2.4/3 · Jev tokens: 1,000 i
 
 - ⚠️ **missing_prerequisite** (p=0.81, confidence=0.70, jev) The step needs a tool, account, permission, file, or value that neither this section nor the earlier context tells the reader how to obtain
 - ⚠️ **placeholders_explained** (p=0.15, confidence=0.80, jev) A placeholder in the code is never explained in the text
-- ⚠️ **untagged_code_block** (static) 1 code block(s) have no language tag, so readers cannot tell shell from config or output
+- ⚠️ **untagged_code_block** (static) 1 code block has no language tag, so readers cannot tell shell from config or output
 - ⚠️ **dead_link** (static) https://example.com/keys returned HTTP 404
 
 ### 4. Quickstart > Configure > Verify 😀 smooth (severity 0.2/3)

@@ -38,7 +38,9 @@ def load_document(
         return _fetch_url(source, transport=transport, timeout=timeout)
     path = Path(source)
     if not path.is_file():
-        raise FetchError(f"source is neither a URL nor an existing file: {source}")
+        raise FetchError(
+            f"{source} is not a URL or an existing file. Pass a page URL or a .md/.html path."
+        )
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as exc:
@@ -63,7 +65,7 @@ def _fetch_url(url: str, *, transport: httpx.BaseTransport | None, timeout: floa
     except httpx.HTTPError as exc:
         raise FetchError(f"failed to fetch {url}: {exc}") from exc
     if not body.strip():
-        raise FetchError(f"{url} returned an empty body")
+        raise FetchError(f"{url} returned an empty page. Check the URL in a browser.")
     if _looks_like_html(content_type, body):
         return _from_html(url, body, fallback_title=url)
     return Document(source=url, title=document_title(body) or url, markdown=body)
@@ -73,15 +75,20 @@ def _read_capped(response: httpx.Response, url: str) -> str:
     """Read at most MAX_PAGE_BYTES so a hostile or huge page cannot exhaust memory."""
     declared = response.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > MAX_PAGE_BYTES:
-        raise FetchError(f"{url} is larger than {MAX_PAGE_BYTES} bytes")
+        raise FetchError(_too_large(url))
     chunks: list[bytes] = []
     total = 0
     for chunk in response.iter_bytes():
         total += len(chunk)
         if total > MAX_PAGE_BYTES:
-            raise FetchError(f"{url} is larger than {MAX_PAGE_BYTES} bytes")
+            raise FetchError(_too_large(url))
         chunks.append(chunk)
     return b"".join(chunks).decode(response.charset_encoding or "utf-8", errors="replace")
+
+
+def _too_large(url: str) -> str:
+    limit_mb = MAX_PAGE_BYTES // (1024 * 1024)
+    return f"{url} is larger than {limit_mb} MB. Save the page as a file and pass the path instead."
 
 
 def _looks_like_html(content_type: str, body: str) -> bool:

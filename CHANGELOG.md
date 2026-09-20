@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Sentiment label `pause` is now `hesitant`, so all four reader states are
+  adjectives. Reports and the JSON `sentiment` field change accordingly.
+- Error messages say what to do next: a missing key points at typesafe.ai, a
+  401 points at `TYPESAFE_API_KEY`, an oversized page suggests saving it
+  locally, and the `--fail-on-severity` message names the failing step.
+- Counts are pluralised properly ("1 code block has", "2 code blocks have").
+
 ## [0.1.0] - 2026-09-20
 
 ### Added

@@ -11,7 +11,7 @@ from .models import Finding, FrictionLog, StepLog
 
 SENTIMENT_ICONS = {
     "smooth": "😀",
-    "pause": "😐",
+    "hesitant": "😐",
     "frustrated": "😠",
     "blocked": "🛑",
     "unknown": "❔",
@@ -87,7 +87,7 @@ def _step_section(step: StepLog) -> tuple[str, ...]:
             for finding in step.confirmed_findings
         ),
         *(
-            f"- 🔍 needs review: **{finding.check}** {_evidence(finding)} {finding.detail}"
+            f"- 🔍 Needs review: **{finding.check}** {_evidence(finding)} {finding.detail}"
             for finding in step.review_findings
         ),
     ]

@@ -43,7 +43,7 @@ def test_markdown_report_has_summary_table_and_walkthrough():
     assert "- ⚠️ **missing_prerequisite** (p=0.81, confidence=0.70, jev) needs a key" in text
     assert "- ⚠️ **dead_link** (static) https://x returned HTTP 404" in text
     assert (
-        "- 🔍 needs review: **code_matches_prose** (p=0.50, confidence=0.30, jev) mismatch" in text
+        "- 🔍 Needs review: **code_matches_prose** (p=0.50, confidence=0.30, jev) mismatch" in text
     )
 
 

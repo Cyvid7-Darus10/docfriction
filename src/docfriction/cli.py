@@ -25,16 +25,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("source", help="URL of a docs page, or a local .md/.html file")
     parser.add_argument("-o", "--out", type=Path, help="write the report here instead of stdout")
-    parser.add_argument("-f", "--format", choices=("md", "json"), default="md")
+    parser.add_argument(
+        "-f", "--format", choices=("md", "json"), default="md", help="report format (default: md)"
+    )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Jev model id (default: jev-latest)")
-    parser.add_argument("--check-links", action="store_true", help="also HEAD every external link")
+    parser.add_argument(
+        "--check-links",
+        action="store_true",
+        help="check every external link in each section and report dead ones",
+    )
     parser.add_argument(
         "--allow-private-links",
         action="store_true",
         help="let --check-links request private, loopback, and link-local addresses",
     )
-    parser.add_argument("--max-sections", type=int, help="only evaluate the first N sections")
-    parser.add_argument("--concurrency", type=int, default=4, help="parallel Jev calls")
+    parser.add_argument(
+        "--max-sections", type=int, metavar="N", help="evaluate only the first N sections"
+    )
+    parser.add_argument(
+        "--concurrency", type=int, default=4, help="Jev requests in flight at once (default: 4)"
+    )
     parser.add_argument(
         "--fail-on-severity",
         type=float,
@@ -72,8 +82,11 @@ def main(argv: list[str] | None = None) -> int:
     report = render_json(log) if args.format == "json" else render_markdown(log)
     _emit(report, args.out)
     if args.fail_on_severity is not None and log.max_severity >= args.fail_on_severity:
+        worst = max(log.steps, key=lambda step: step.severity or 0.0)
         print(
-            f"docfriction: max severity {log.max_severity:.2f} >= {args.fail_on_severity}",
+            f"docfriction: severity {log.max_severity:.2f} at step "
+            f"{worst.segment.index + 1} ({worst.segment.title}) is at or above "
+            f"{args.fail_on_severity}",
             file=sys.stderr,
         )
         return EXIT_THRESHOLD
@@ -82,11 +95,16 @@ def main(argv: list[str] | None = None) -> int:
 
 def _dry_run(markdown: str, title: str, max_sections: int | None) -> int:
     segments = segment_markdown(markdown)[:max_sections]
-    print(f"{title}: {len(segments)} step(s)")
+    print(f"{title}: {_plural(len(segments), 'step')}")
     for segment in segments:
-        code = f", {len(segment.code_blocks)} code block(s)" if segment.has_code else ""
+        blocks = len(segment.code_blocks)
+        code = f", {_plural(blocks, 'code block')}" if blocks else ""
         print(f"  {segment.index + 1}. {segment.title} ({len(segment.prose)} chars{code})")
     return EXIT_OK
+
+
+def _plural(count: int, noun: str) -> str:
+    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
 
 
 def _emit(report: str, out: Path | None) -> None:

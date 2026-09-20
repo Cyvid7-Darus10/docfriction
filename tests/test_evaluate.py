@@ -30,7 +30,7 @@ def answers_from(raw: dict):
 def test_sentiment_bands():
     assert sentiment_for(None) == "unknown"
     assert sentiment_for(0.2) == "smooth"
-    assert sentiment_for(1.0) == "pause"
+    assert sentiment_for(1.0) == "hesitant"
     assert sentiment_for(2.0) == "frustrated"
     assert sentiment_for(2.9) == "blocked"
 

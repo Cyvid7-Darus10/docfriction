@@ -23,9 +23,10 @@ from .rubric import (
 )
 from .segment import segment_markdown
 
+# Reader states, all adjectives, in the order a friction log's margin marks escalate.
 SENTIMENT_BANDS: tuple[tuple[str, float], ...] = (
     ("smooth", 0.75),
-    ("pause", 1.5),
+    ("hesitant", 1.5),
     ("frustrated", 2.25),
 )
 BLOCKED = "blocked"

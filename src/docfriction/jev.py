@@ -134,7 +134,8 @@ class JevClient:
         key = api_key or os.environ.get(API_KEY_ENV)
         if not key:
             raise MissingApiKeyError(
-                f"no Jev API key: pass api_key or set {API_KEY_ENV} (see .env.example)"
+                f"{API_KEY_ENV} is not set. Get a key at https://typesafe.ai and export it, "
+                "or pass api_key= when constructing JevClient."
             )
         self._model = model
         self._max_retries = max_retries
@@ -168,10 +169,7 @@ class JevClient:
         body = {"model": self._model, "state": state, "questions": dict(questions)}
         response = self._post_with_retries(body)
         if response.status_code != 200:
-            raise JevError(
-                f"Jev returned HTTP {response.status_code}: {response.text[:200]}",
-                status=response.status_code,
-            )
+            raise JevError(_describe_http_error(response), status=response.status_code)
         try:
             payload = response.json()
         except ValueError as exc:
@@ -193,4 +191,16 @@ class JevClient:
             if response.status_code not in RETRYABLE_STATUSES:
                 return response
             last_error = JevError(f"Jev returned HTTP {response.status_code}", response.status_code)
-        raise JevError(f"Jev request failed after {self._max_retries + 1} attempts: {last_error}")
+        raise JevError(
+            f"Jev did not answer after {self._max_retries + 1} attempts ({last_error}). "
+            "Wait a minute and retry, or lower --concurrency."
+        )
+
+
+def _describe_http_error(response: httpx.Response) -> str:
+    status = response.status_code
+    if status == 401:
+        return f"Jev rejected the API key (HTTP 401). Check {API_KEY_ENV}."
+    if status == 422:
+        return f"Jev rejected the request (HTTP 422): {response.text[:200]}"
+    return f"Jev returned HTTP {status}: {response.text[:200]}"

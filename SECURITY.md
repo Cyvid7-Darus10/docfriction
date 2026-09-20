@@ -34,5 +34,5 @@ advisory once one is ready.
   outside the offered options is treated as an API error rather than written
   into the report.
 - Page content is untrusted input to Jev. Jev is not hardened against prompt
-  injection, so a page can influence its own friction score. docfriction is a
-  quality tool, not a security control.
+  injection, so a page can influence its own friction score. Use docfriction
+  for docs quality only; a clean report proves nothing about a page's safety.

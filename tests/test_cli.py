@@ -20,8 +20,8 @@ def test_dry_run_lists_steps_without_a_key(sample_file: Path, capsys, monkeypatc
     monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
     assert cli.main([str(sample_file), "--dry-run", "--max-sections", "2"]) == 0
     out = capsys.readouterr().out
-    assert "Quickstart: 2 step(s)" in out
-    assert "2. Quickstart > Install (25 chars, 1 code block(s))" in out
+    assert "Quickstart: 2 steps" in out
+    assert "2. Quickstart > Install (25 chars, 1 code block)" in out
 
 
 def test_missing_key_is_reported(sample_file: Path, capsys, monkeypatch):
@@ -32,7 +32,7 @@ def test_missing_key_is_reported(sample_file: Path, capsys, monkeypatch):
 
 def test_missing_source_is_reported(capsys):
     assert cli.main(["/nope/none.md"]) == 1
-    assert "neither a URL nor an existing file" in capsys.readouterr().err
+    assert "is not a URL or an existing file" in capsys.readouterr().err
 
 
 def test_full_run_writes_report_and_honours_fail_threshold(
@@ -58,7 +58,7 @@ def test_full_run_writes_report_and_honours_fail_threshold(
     )
     assert code == 2
     assert '"max_severity": 2.5' in out.read_text()
-    assert "max severity 2.50 >= 2.0" in capsys.readouterr().err
+    assert "severity 2.50 at step 1 (Quickstart) is at or above 2.0" in capsys.readouterr().err
 
     assert cli.main([str(sample_file)]) == 0
     assert "# Friction log: Quickstart" in capsys.readouterr().out
@@ -76,4 +76,4 @@ def test_jev_errors_are_reported(sample_file: Path, capsys, api_key, monkeypatch
 
     monkeypatch.setattr(cli, "JevClient", patched)
     assert cli.main([str(sample_file)]) == 1
-    assert "HTTP 401" in capsys.readouterr().err
+    assert "rejected the API key (HTTP 401)" in capsys.readouterr().err

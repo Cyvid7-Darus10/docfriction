@@ -62,7 +62,7 @@ def test_html_without_content_type_is_detected_by_sniffing():
     "response, message",
     [
         (lambda _r: httpx.Response(500), "failed to fetch"),
-        (lambda _r: httpx.Response(200, text="   "), "empty body"),
+        (lambda _r: httpx.Response(200, text="   "), "empty page"),
     ],
 )
 def test_fetch_errors_are_wrapped(response, message):
@@ -86,20 +86,20 @@ def test_local_markdown_and_html_files(tmp_path: Path):
 
 
 def test_missing_file_is_an_error(tmp_path: Path):
-    with pytest.raises(FetchError, match="neither a URL nor an existing file"):
+    with pytest.raises(FetchError, match="is not a URL or an existing file"):
         load_document(str(tmp_path / "nope.md"))
 
 
 def test_pages_over_the_size_cap_are_rejected(monkeypatch):
     monkeypatch.setattr("docfriction.fetch.MAX_PAGE_BYTES", 100)
     oversized = transport(lambda _r: httpx.Response(200, text="# Hi\n\n" + "x" * 200))
-    with pytest.raises(FetchError, match="larger than 100 bytes"):
+    with pytest.raises(FetchError, match="larger than 0 MB"):
         load_document("https://d.example/big", transport=oversized)
 
     declared = transport(
         lambda _r: httpx.Response(200, text="# Hi", headers={"content-length": "5000"})
     )
-    with pytest.raises(FetchError, match="larger than 100 bytes"):
+    with pytest.raises(FetchError, match="larger than 0 MB"):
         load_document("https://d.example/declared", transport=declared)
 
 

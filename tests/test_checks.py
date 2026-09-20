@@ -38,7 +38,9 @@ def test_angle_brackets_are_not_placeholders_in_markup():
 def test_static_findings_flag_untagged_code_and_stub_sections():
     untagged = static_findings(make_segment(blocks=(CodeBlock("", "ls"), CodeBlock("sh", "ls"))))
     assert [f.check for f in untagged] == ["untagged_code_block"]
-    assert "1 code block(s)" in untagged[0].detail
+    assert untagged[0].detail.startswith("1 code block has no language tag")
+    both = static_findings(make_segment(blocks=(CodeBlock("", "a"), CodeBlock("", "b"))))
+    assert both[0].detail.startswith("2 code blocks have no language tag")
     assert [f.check for f in static_findings(make_segment(prose="tiny"))] == ["stub_section"]
     assert static_findings(make_segment()) == ()
 

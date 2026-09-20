@@ -3,7 +3,10 @@ matching, so anything a regex or an HTTP request can answer is done here."""
 
 from __future__ import annotations
 
+import ipaddress
 import re
+import socket
+from collections.abc import Callable
 
 import httpx
 
@@ -23,7 +26,14 @@ MARKUP_LANGUAGES = frozenset({"html", "xml", "jsx", "tsx", "vue", "svelte", "xht
 MIN_PROSE_CHARS = 40
 DEAD_LINK_RETRY_STATUSES = frozenset({400, 403, 405})
 DEFAULT_LINK_TIMEOUT_SECONDS = 10.0
+ALLOWED_LINK_SCHEMES = frozenset({"http", "https"})
 USER_AGENT = f"docfriction/{__version__} (+https://github.com/Cyvid7-Darus10/docfriction)"
+
+Resolver = Callable[[str], tuple[str, ...]]
+
+
+class BlockedHostError(httpx.RequestError):
+    """Raised by the link client when a URL points at a private or internal address."""
 
 
 def find_placeholders(segment: Segment) -> tuple[str, ...]:
@@ -58,29 +68,79 @@ def static_findings(segment: Segment) -> tuple[Finding, ...]:
     return tuple(findings)
 
 
-def check_links(
-    urls: tuple[str, ...],
+def ip_literal(host: str) -> tuple[str, ...]:
+    """The host itself if it is an IP address (IPv6 brackets stripped), else empty."""
+    try:
+        ipaddress.ip_address(host.strip("[]"))
+    except ValueError:
+        return ()
+    return (host.strip("[]"),)
+
+
+def resolve_host(host: str) -> tuple[str, ...]:
+    """All addresses a hostname resolves to via DNS."""
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror as exc:
+        raise BlockedHostError(f"{host} does not resolve") from exc
+    return tuple(dict.fromkeys(str(info[4][0]) for info in infos))
+
+
+def is_public_address(address: str) -> bool:
+    parsed = ipaddress.ip_address(address)
+    return not (
+        parsed.is_private
+        or parsed.is_loopback
+        or parsed.is_link_local
+        or parsed.is_multicast
+        or parsed.is_reserved
+        or parsed.is_unspecified
+    )
+
+
+def link_client(
     *,
     transport: httpx.BaseTransport | None = None,
     timeout: float = DEFAULT_LINK_TIMEOUT_SECONDS,
-) -> tuple[Finding, ...]:
-    if not urls:
-        return ()
-    with httpx.Client(
+    allow_private_hosts: bool = False,
+    resolver: Resolver = resolve_host,
+) -> httpx.Client:
+    """One shared client for link checks. The request hook runs on every redirect hop,
+    so a public URL cannot bounce the checker into a private network."""
+
+    def guard(request: httpx.Request) -> None:
+        if request.url.scheme not in ALLOWED_LINK_SCHEMES:
+            raise BlockedHostError(f"{request.url} uses an unsupported scheme")
+        if allow_private_hosts:
+            return
+        host = request.url.host
+        addresses = ip_literal(host) or resolver(host)
+        if not all(is_public_address(address) for address in addresses):
+            raise BlockedHostError(f"{request.url} points at a private or internal address")
+
+    return httpx.Client(
         follow_redirects=True,
         headers={"User-Agent": USER_AGENT},
         timeout=timeout,
         transport=transport,
-    ) as client:
-        results = (_check_link(client, url) for url in urls)
-        return tuple(finding for finding in results if finding is not None)
+        event_hooks={"request": [guard]},
+    )
+
+
+def check_links(urls: tuple[str, ...], client: httpx.Client) -> tuple[Finding, ...]:
+    results = (_check_link(client, url) for url in urls)
+    return tuple(finding for finding in results if finding is not None)
 
 
 def _check_link(client: httpx.Client, url: str) -> Finding | None:
     try:
         response = client.head(url)
         if response.status_code in DEAD_LINK_RETRY_STATUSES:
-            response = client.get(url)
+            # Some hosts reject HEAD; fetch headers only, never the body.
+            with client.stream("GET", url) as streamed:
+                response = streamed
+    except BlockedHostError as exc:
+        return Finding(check="blocked_link", source=STATIC_SOURCE, detail=str(exc))
     except httpx.HTTPError as exc:
         return _dead_link(f"{url} could not be reached ({type(exc).__name__})")
     if response.status_code >= 400:

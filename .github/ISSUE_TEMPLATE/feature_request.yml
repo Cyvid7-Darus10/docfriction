@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a check, a rubric change, or a new capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What friction are you trying to catch?
+      description: Describe the documentation problem, ideally with a real example
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: A new Jev question, a deterministic check, a CLI flag, or something else
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - Rubric question (Jev)
+        - Deterministic check
+        - Fetching / segmentation
+        - Report format
+        - CLI / CI
+        - Other

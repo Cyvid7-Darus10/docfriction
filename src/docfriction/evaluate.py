@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-from .checks import check_links, static_findings
+from .checks import check_links, link_client, static_findings
 from .jev import JevClient
 from .models import JEV_SOURCE, Answer, Document, Finding, FrictionLog, Segment, StepLog
 from .rubric import (
@@ -47,6 +47,7 @@ class Thresholds:
 class EvaluateOptions:
     thresholds: Thresholds = field(default_factory=Thresholds)
     check_links: bool = False
+    allow_private_links: bool = False
     max_sections: int | None = None
     concurrency: int = 4
 
@@ -60,20 +61,22 @@ def evaluate_document(
 ) -> FrictionLog:
     opts = options or EvaluateOptions()
     segments = segment_markdown(document.markdown)[: opts.max_sections]
+    links = (
+        link_client(transport=link_transport, allow_private_hosts=opts.allow_private_links)
+        if opts.check_links
+        else None
+    )
 
     def run(index: int) -> StepLog:
         previous = segments[index - 1] if index else None
-        return evaluate_segment(
-            segments[index],
-            previous,
-            document.title,
-            client,
-            opts,
-            link_transport=link_transport,
-        )
+        return evaluate_segment(segments[index], previous, document.title, client, opts, links)
 
-    with ThreadPoolExecutor(max_workers=max(1, opts.concurrency)) as pool:
-        steps = tuple(pool.map(run, range(len(segments))))
+    try:
+        with ThreadPoolExecutor(max_workers=max(1, opts.concurrency)) as pool:
+            steps = tuple(pool.map(run, range(len(segments))))
+    finally:
+        if links is not None:
+            links.close()
     return FrictionLog(
         source=document.source,
         title=document.title,
@@ -89,18 +92,18 @@ def evaluate_segment(
     page_title: str,
     client: JevClient,
     options: EvaluateOptions,
-    *,
-    link_transport: httpx.BaseTransport | None = None,
+    links: httpx.Client | None = None,
 ) -> StepLog:
     result = client.evaluate(build_state(segment, previous, page_title), build_questions(segment))
     severity, jev_findings = interpret_answers(result.answers, options.thresholds)
-    links = check_links(segment.links, transport=link_transport) if options.check_links else ()
+    link_findings = check_links(segment.links, links) if links is not None else ()
     return StepLog(
         segment=segment,
         severity=severity,
         sentiment=sentiment_for(severity),
-        findings=(*jev_findings, *static_findings(segment), *links),
+        findings=(*jev_findings, *static_findings(segment), *link_findings),
         input_tokens=result.input_tokens,
+        output_tokens=result.output_tokens,
         model=result.model,
     )
 

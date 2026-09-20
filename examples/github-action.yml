@@ -1,34 +1,48 @@
 # Drop this into .github/workflows/docs-friction.yml in a docs repo.
 # It writes a friction log for every changed Markdown page and fails the job
 # when Jev thinks a reader would be blocked (severity >= 2.5 out of 3).
+#
+# Security notes for public repos:
+# - Page content controls what docfriction sends to Jev and, with
+#   --check-links, which URLs it requests. docfriction refuses to check links
+#   that resolve to private, loopback, or link-local addresses, but you may
+#   still prefer to drop --check-links for pull requests from forks.
+# - `pull_request` from a fork does not receive secrets, so fork PRs will fail
+#   at the API call. Gate the job with an `environment:` that requires
+#   reviewer approval if you want maintainers to trigger it deliberately.
+# - Pin the docfriction version and bump it on purpose.
 name: Docs friction log
 
 on:
   pull_request:
     paths: ["docs/**/*.md"]
 
+permissions:
+  contents: read
+
 jobs:
   friction:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
       - name: Log friction on changed pages
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
           mkdir -p friction-logs
           status=0
-          for page in $(git diff --name-only origin/${{ github.base_ref }}... -- 'docs/**/*.md'); do
+          for page in $(git diff --name-only "origin/${BASE_REF}..." -- 'docs/**/*.md'); do
             name=$(echo "$page" | tr '/' '_')
-            uvx docfriction "$page" --check-links --fail-on-severity 2.5 \
+            uvx docfriction==0.1.0 "$page" --check-links --fail-on-severity 2.5 \
               --out "friction-logs/${name%.md}.md" || status=$?
           done
           exit $status
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: friction-logs

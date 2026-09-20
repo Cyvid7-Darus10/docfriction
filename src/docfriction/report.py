@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
+from typing import Any
 
 from .jev import estimated_cost_usd
 from .models import Finding, FrictionLog, StepLog
@@ -26,8 +27,8 @@ def render_markdown(log: FrictionLog) -> str:
         f"Generated: {log.generated_at} by docfriction, model `{log.model}`  ",
         f"Steps: {len(log.steps)} · steps with friction: {len(log.friction_steps)} · "
         f"max severity: {log.max_severity:.1f}/{MAX_SEVERITY:.0f} · "
-        f"Jev input tokens: {log.input_tokens:,} "
-        f"(about ${estimated_cost_usd(log.input_tokens):.4f})",
+        f"Jev tokens: {log.input_tokens:,} in, {log.output_tokens:,} out "
+        f"(about ${estimated_cost_usd(log.input_tokens):.4f}; output is free)",
         "",
         "## Summary",
         "",
@@ -53,6 +54,7 @@ def render_json(log: FrictionLog) -> str:
             "friction_steps": len(log.friction_steps),
             "max_severity": log.max_severity,
             "input_tokens": log.input_tokens,
+            "output_tokens": log.output_tokens,
             "estimated_cost_usd": estimated_cost_usd(log.input_tokens),
         },
         "steps": [_step_payload(step) for step in log.steps],
@@ -108,7 +110,7 @@ def _evidence(finding: Finding) -> str:
     return f"({', '.join(parts)})"
 
 
-def _step_payload(step: StepLog) -> dict:
+def _step_payload(step: StepLog) -> dict[str, Any]:
     return {
         "index": step.segment.index + 1,
         "title": step.segment.title,
@@ -116,5 +118,6 @@ def _step_payload(step: StepLog) -> dict:
         "sentiment": step.sentiment,
         "severity": step.severity,
         "input_tokens": step.input_tokens,
+        "output_tokens": step.output_tokens,
         "findings": [asdict(finding) for finding in step.findings],
     }

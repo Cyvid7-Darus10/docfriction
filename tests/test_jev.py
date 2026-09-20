@@ -55,16 +55,17 @@ def test_evaluate_sends_documented_request_and_parses_answers(make_client):
             ),
         )
 
+    questions = {
+        "yn": noul("q"),
+        "pick": choice("q", {"a": "A", "b": "B", "no_friction": "none"}),
+        "rate": score("q", ("a", "b", "c", "d")),
+    }
     with make_client(handler, model="jev-1.13.0") as client:
-        result = client.evaluate({"text": "hi"}, {"yn": noul("q")})
+        result = client.evaluate({"text": "hi"}, questions)
 
     assert seen["url"] == "https://api.typesafe.ai/v1/systemone"
     assert seen["auth"] == "Bearer test-key"
-    assert seen["body"] == {
-        "model": "jev-1.13.0",
-        "state": {"text": "hi"},
-        "questions": {"yn": {"type": "noul", "instructions": "q"}},
-    }
+    assert seen["body"] == {"model": "jev-1.13.0", "state": {"text": "hi"}, "questions": questions}
     assert result.model == "jev-1.13.0"
     assert result.input_tokens == 300
     assert result.answers["yn"].value == 0.82
@@ -139,3 +140,20 @@ def test_parse_result_rejects_malformed_payloads(payload, message):
 
 def test_estimated_cost_uses_published_input_price():
     assert estimated_cost_usd(1_000_000) == pytest.approx(0.042)
+
+
+@pytest.mark.parametrize(
+    "answers, message",
+    [
+        ({"yn": noul_answer(0.5), "extra": noul_answer(0.5)}, "not asked"),
+        ({"yn": choice_answer("a", 0.9)}, "with type 'choice'"),
+        ({"pick": choice_answer("<script>", 0.9)}, "was not offered"),
+    ],
+)
+def test_answers_that_do_not_fit_the_questions_are_rejected(make_client, answers, message):
+    def handler(_request: httpx.Request, _body: dict) -> httpx.Response:
+        return httpx.Response(200, json=jev_response(answers))
+
+    questions = {"yn": noul("q"), "pick": choice("q", {"a": "A", "b": "B"})}
+    with make_client(handler) as client, pytest.raises(JevError, match=message):
+        client.evaluate("s", questions)

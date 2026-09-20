@@ -1,15 +1,15 @@
 # Research notes: Jev, and using it to friction-log documentation
 
-Snapshot date: 2026-09-20. Jev is young (TypeSafe announced it publicly on
-2026-09-19) and details below will drift; the primary source is
-https://docs.typesafe.ai.
+Written 2026-09-20, the day after TypeSafe announced Jev publicly. Prices,
+limits and model ids below will drift; https://docs.typesafe.ai is the primary
+source.
 
 ## 1. What Jev is
 
-Jev is TypeSafe AI's "System One" model. Instead of generating text it
-**evaluates one state against typed questions** and returns one typed,
-calibrated answer per question. TypeSafe's own framing is "a smart `if`
-statement": fast, intuitive judgment you can embed inside ordinary code.
+Jev is TypeSafe AI's "System One" model. It doesn't generate text. It takes
+one state and a set of typed questions and returns one calibrated answer per
+question. TypeSafe describes it as "a smart `if` statement" you can put inside
+ordinary code.
 
 Three question primitives:
 
@@ -127,9 +127,9 @@ DevRel and docs teams. A typical log has:
 - a severity or "would I have given up here?" judgment
 - a summary of the top friction points, with owners
 
-Friction logs are valued precisely because they capture *where a reader
-stops*, not whether the page is grammatically correct. Their cost is that a
-human has to walk the page, and they go stale as soon as the page changes.
+The value of a friction log is that it records where a reader stops, which
+no style linter can tell you. The cost is that a human has to walk the page,
+and the log goes stale as soon as the page changes.
 
 Two related practices: **documentation testing** (running the commands in a
 page in CI to prove they work) and **doc linting** (Vale, markdownlint) which
@@ -138,7 +138,7 @@ here?", which is the question friction logs exist for.
 
 ## 3. Why Jev fits the gap
 
-The friction-log judgments are all bounded:
+Every judgment in a friction log has a bounded answer:
 
 | Human judgment | Bounded form |
 |---|---|
@@ -146,8 +146,7 @@ The friction-log judgments are all bounded:
 | How much did it hurt? | score over "continued / paused / left the page / gave up" |
 | Are prerequisites stated? Is the result shown? Does the code match? | yes/no |
 
-That is Jev's whole design space. Three properties make it a better fit than
-a general LLM for this job:
+Three things make Jev fit this better than a general LLM would:
 
 1. **Calibration.** A 0.81 on `missing_prerequisite` is meant to be a
    probability, and the model returns a separate confidence. That lets a tool
@@ -160,9 +159,9 @@ a general LLM for this job:
    that has to be parsed. Structured-output error rate is zero by
    construction.
 
-What Jev does *not* replace: the human who reads the page and decides what to
-rewrite. docfriction's report says *which* rubric item fired and *how likely*;
-a writer still has to look.
+Jev doesn't replace the person who reads the page and decides what to
+rewrite. The report says which rubric item fired and how likely; a writer
+still has to look at the section.
 
 ## 4. Design decisions in docfriction, traced to the research
 

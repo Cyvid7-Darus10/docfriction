@@ -28,13 +28,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-f", "--format", choices=("md", "json"), default="md")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Jev model id (default: jev-latest)")
     parser.add_argument("--check-links", action="store_true", help="also HEAD every external link")
+    parser.add_argument(
+        "--allow-private-links",
+        action="store_true",
+        help="let --check-links request private, loopback, and link-local addresses",
+    )
     parser.add_argument("--max-sections", type=int, help="only evaluate the first N sections")
     parser.add_argument("--concurrency", type=int, default=4, help="parallel Jev calls")
     parser.add_argument(
         "--fail-on-severity",
         type=float,
         metavar="N",
-        help="exit 2 if any step's severity is at least N (0-3); handy in CI",
+        help="exit 2 if any step's severity is at least N on the 0-3 scale",
     )
     parser.add_argument(
         "--dry-run",
@@ -55,6 +60,7 @@ def main(argv: list[str] | None = None) -> int:
         return _dry_run(document.markdown, document.title, args.max_sections)
     options = EvaluateOptions(
         check_links=args.check_links,
+        allow_private_links=args.allow_private_links,
         max_sections=args.max_sections,
         concurrency=args.concurrency,
     )

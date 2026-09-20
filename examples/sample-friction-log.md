@@ -7,7 +7,7 @@
 
 Source: sample.md  
 Generated: 2026-09-20T09:12:41+00:00 by docfriction, model `jev-1.13.0`  
-Steps: 4 · steps with friction: 3 · max severity: 2.4/3 · Jev input tokens: 1,000 (about $0.0000)
+Steps: 4 · steps with friction: 3 · max severity: 2.4/3 · Jev tokens: 1,000 in, 48 out (about $0.0000; output is free)
 
 ## Summary
 

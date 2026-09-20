@@ -15,13 +15,14 @@ from typing import Any
 import httpx
 
 from ._version import __version__
-from .models import Answer, JevResult
+from .models import ANSWER_TYPES, Answer, AnswerType, JevResult
 
 DEFAULT_BASE_URL = "https://api.typesafe.ai"
 SYSTEM_ONE_PATH = "/v1/systemone"
 DEFAULT_MODEL = "jev-latest"
 API_KEY_ENV = "TYPESAFE_API_KEY"
 BASE_URL_ENV = "TYPESAFE_BASE_URL"
+# https://docs.typesafe.ai/models: input is metered, output tokens are free.
 PRICE_PER_MILLION_INPUT_TOKENS_USD = 0.042
 RETRYABLE_STATUSES = frozenset({429, 529})
 DEFAULT_TIMEOUT_SECONDS = 30.0
@@ -74,16 +75,14 @@ def parse_result(payload: Mapping[str, Any]) -> JevResult:
 
 
 def _parse_answer(key: str, raw: Mapping[str, Any]) -> Answer:
-    kind = raw.get("type")
+    kind = _answer_type(key, raw.get("type"))
     try:
         if kind == "noul":
             value: str | float = float(raw["noul"])
         elif kind == "choice":
             value = str(raw["choice"])
-        elif kind == "score":
-            value = float(raw["score"])
         else:
-            raise JevError(f"unknown answer type {kind!r} for question {key!r}")
+            value = float(raw["score"])
     except (KeyError, TypeError, ValueError) as exc:
         raise JevError(f"malformed {kind} answer for question {key!r}: {exc}") from exc
     confidence = raw.get("confidence")
@@ -94,6 +93,28 @@ def _parse_answer(key: str, raw: Mapping[str, Any]) -> Answer:
         probabilities={str(k): float(v) for k, v in (raw.get("probabilities") or {}).items()},
         legend={str(k): str(v) for k, v in (raw.get("legend") or {}).items()},
     )
+
+
+def _answer_type(key: str, kind: object) -> AnswerType:
+    for known in ANSWER_TYPES:
+        if kind == known:
+            return known
+    raise JevError(f"unknown answer type {kind!r} for question {key!r}")
+
+
+def validate_answers(
+    answers: Mapping[str, Answer], questions: Mapping[str, Mapping[str, Any]]
+) -> None:
+    """Reject answers that do not fit the questions asked. Page content flows into the
+    state, so a choice outside the offered criteria must never reach a report."""
+    for key, answer in answers.items():
+        question = questions.get(key)
+        if question is None:
+            raise JevError(f"Jev answered a question that was not asked: {key!r}")
+        if answer.type != question.get("type"):
+            raise JevError(f"Jev answered {key!r} with type {answer.type!r}")
+        if answer.type == "choice" and answer.value not in question.get("criteria", {}):
+            raise JevError(f"Jev chose {answer.value!r} for {key!r}, which was not offered")
 
 
 class JevClient:
@@ -155,7 +176,9 @@ class JevClient:
             payload = response.json()
         except ValueError as exc:
             raise JevError("Jev returned a non-JSON body") from exc
-        return parse_result(payload)
+        result = parse_result(payload)
+        validate_answers(result.answers, questions)
+        return result
 
     def _post_with_retries(self, body: Mapping[str, Any]) -> httpx.Response:
         last_error: Exception | None = None

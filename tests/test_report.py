@@ -10,7 +10,7 @@ def sample_log() -> FrictionLog:
     seg_a = Segment(0, ("Quickstart",), "welcome")
     seg_b = Segment(1, ("Quickstart", "Configure"), "set key", (CodeBlock("", "x=1"),))
     steps = (
-        StepLog(seg_a, 0.2, "smooth", (), 100, "jev-1.13.0"),
+        StepLog(seg_a, 0.2, "smooth", (), 100, 10, "jev-1.13.0"),
         StepLog(
             seg_b,
             2.4,
@@ -21,6 +21,7 @@ def sample_log() -> FrictionLog:
                 Finding("dead_link", "static", "https://x returned HTTP 404"),
             ),
             200,
+            20,
             "jev-1.13.0",
         ),
     )
@@ -31,6 +32,7 @@ def test_markdown_report_has_summary_table_and_walkthrough():
     text = render_markdown(sample_log())
     assert text.startswith("# Friction log: Quickstart\n")
     assert "Steps: 2 · steps with friction: 1 · max severity: 2.4/3" in text
+    assert "Jev tokens: 300 in, 30 out (about $0.0000; output is free)" in text
     assert "| 1 | Quickstart | 😀 smooth | 0.2 | – |" in text
     assert (
         "| 2 | Quickstart > Configure | 🛑 blocked | 2.4 | missing_prerequisite (0.81), dead_link |"
@@ -52,6 +54,7 @@ def test_json_report_round_trips():
         "friction_steps": 1,
         "max_severity": 2.4,
         "input_tokens": 300,
+        "output_tokens": 30,
         "estimated_cost_usd": 300 / 1_000_000 * 0.042,
     }
     assert payload["steps"][1]["heading_path"] == ["Quickstart", "Configure"]

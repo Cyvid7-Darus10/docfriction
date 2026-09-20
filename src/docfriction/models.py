@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import Literal
 
 JEV_SOURCE = "jev"
 STATIC_SOURCE = "static"
+
+AnswerType = Literal["noul", "choice", "score"]
+ANSWER_TYPES: tuple[AnswerType, ...] = ("noul", "choice", "score")
 
 
 @dataclass(frozen=True)
@@ -45,7 +49,7 @@ class Document:
 class Answer:
     """One typed Jev answer, normalised across the noul, choice and score primitives."""
 
-    type: str
+    type: AnswerType
     value: str | float
     confidence: float | None
     probabilities: Mapping[str, float] = field(default_factory=dict)
@@ -88,6 +92,7 @@ class StepLog:
     sentiment: str
     findings: tuple[Finding, ...]
     input_tokens: int = 0
+    output_tokens: int = 0
     model: str = ""
 
     @property
@@ -110,6 +115,10 @@ class FrictionLog:
     @property
     def input_tokens(self) -> int:
         return sum(step.input_tokens for step in self.steps)
+
+    @property
+    def output_tokens(self) -> int:
+        return sum(step.output_tokens for step in self.steps)
 
     @property
     def friction_steps(self) -> tuple[StepLog, ...]:

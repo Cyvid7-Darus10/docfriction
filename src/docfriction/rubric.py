@@ -15,6 +15,7 @@ from typing import Any
 from .checks import find_placeholders
 from .jev import choice, noul, score
 from .models import Segment
+from .segment import TRUNCATION_MARKER
 
 NO_FRICTION = "no_friction"
 PREVIOUS_SUMMARY_CHARS = 800
@@ -148,5 +149,6 @@ def _summary(previous: Segment | None) -> str:
     if previous is None:
         return "(this is the first section of the page)"
     text = previous.prose or "(code only)"
-    clipped = text[:PREVIOUS_SUMMARY_CHARS]
-    return f"{previous.title}: {clipped}"
+    if len(text) > PREVIOUS_SUMMARY_CHARS:
+        text = text[:PREVIOUS_SUMMARY_CHARS].rstrip() + TRUNCATION_MARKER
+    return f"{previous.title}: {text}"

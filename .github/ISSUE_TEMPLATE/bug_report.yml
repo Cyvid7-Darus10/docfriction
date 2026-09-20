@@ -1,0 +1,33 @@
+name: Bug report
+description: Something did not work as documented
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: docfriction version
+      description: Output of `docfriction --version`
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Documentation page
+      description: The URL or a description of the page you ran it on, if it can be shared
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Include the command you ran and the full error or the unexpected part of the report
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+  - type: textarea
+    id: dryrun
+    attributes:
+      label: Dry-run output
+      description: Output of `docfriction <page> --dry-run` (this never calls Jev)
+      render: text

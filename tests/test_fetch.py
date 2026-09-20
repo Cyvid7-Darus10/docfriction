@@ -88,3 +88,28 @@ def test_local_markdown_and_html_files(tmp_path: Path):
 def test_missing_file_is_an_error(tmp_path: Path):
     with pytest.raises(FetchError, match="neither a URL nor an existing file"):
         load_document(str(tmp_path / "nope.md"))
+
+
+def test_pages_over_the_size_cap_are_rejected(monkeypatch):
+    monkeypatch.setattr("docfriction.fetch.MAX_PAGE_BYTES", 100)
+    oversized = transport(lambda _r: httpx.Response(200, text="# Hi\n\n" + "x" * 200))
+    with pytest.raises(FetchError, match="larger than 100 bytes"):
+        load_document("https://d.example/big", transport=oversized)
+
+    declared = transport(
+        lambda _r: httpx.Response(200, text="# Hi", headers={"content-length": "5000"})
+    )
+    with pytest.raises(FetchError, match="larger than 100 bytes"):
+        load_document("https://d.example/declared", transport=declared)
+
+
+def test_github_readme_is_preferred_over_the_file_browser():
+    html = """<html><body><main>
+    <nav>Folders and files</nav>
+    <article class="markdown-body"><h1>tool</h1><p>Real readme text here.</p></article>
+    </main></body></html>"""
+    doc = load_document(
+        "https://github.com/x/tool", transport=transport(lambda _r: httpx.Response(200, text=html))
+    )
+    assert doc.markdown.startswith("# tool")
+    assert "Folders and files" not in doc.markdown

@@ -18,7 +18,7 @@ from docfriction.evaluate import (
     sentiment_for,
 )
 from docfriction.jev import parse_result
-from docfriction.models import Document
+from docfriction.models import Document, Segment
 from docfriction.rubric import NO_FRICTION, build_questions, build_state
 from docfriction.segment import segment_markdown
 
@@ -96,6 +96,10 @@ def test_build_state_and_questions_follow_the_rubric():
     state = build_state(segments[2], segments[1], "Quickstart")
     assert state["section_path"] == "Quickstart > Configure"
     assert state["previous_section_summary"].startswith("Quickstart > Install:")
+    long_previous = Segment(0, ("Long",), "word " * 400)
+    assert build_state(segments[2], long_previous, "Q")["previous_section_summary"].endswith(
+        "[... section truncated by docfriction ...]"
+    )
     assert state["placeholders"] == ["<project-id>", "YOUR_API_KEY"]
     assert state["code_blocks"][0]["language"] == "unspecified"
     questions = build_questions(segments[2])
@@ -115,7 +119,7 @@ def test_build_state_and_questions_follow_the_rubric():
     assert "code_matches_prose" not in build_questions(segments[0])
 
 
-def test_evaluate_document_end_to_end_with_mocked_jev_and_links(make_client):
+def test_evaluate_document_end_to_end_with_mocked_jev_and_links(make_client, monkeypatch):
     def handler(_request: httpx.Request, body: dict) -> httpx.Response:
         answers = clean_answers(body["questions"])
         if body["state"]["section_path"] == "Quickstart > Configure":
@@ -128,6 +132,7 @@ def test_evaluate_document_end_to_end_with_mocked_jev_and_links(make_client):
         return httpx.Response(404)
 
     document = Document(source="sample.md", title="Quickstart", markdown=SAMPLE_MARKDOWN)
+    monkeypatch.setattr("docfriction.checks.resolve_host", lambda _host: ("93.184.216.34",))
     with make_client(handler) as client:
         log = evaluate_document(
             document,
@@ -138,6 +143,7 @@ def test_evaluate_document_end_to_end_with_mocked_jev_and_links(make_client):
 
     assert log.model == "jev-1.13.0"
     assert log.input_tokens == 1000
+    assert log.output_tokens == 48
     assert [s.sentiment for s in log.steps] == ["smooth", "smooth", "blocked", "smooth"]
     configure = log.steps[2]
     assert {f.check for f in configure.confirmed_findings} == {

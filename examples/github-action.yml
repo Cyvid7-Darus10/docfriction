@@ -10,7 +10,7 @@
 # - `pull_request` from a fork does not receive secrets, so fork PRs will fail
 #   at the API call. Gate the job with an `environment:` that requires
 #   reviewer approval if you want maintainers to trigger it deliberately.
-# - Pin the docfriction version and bump it on purpose.
+# - Pin the docfriction version (a git SHA until it is on PyPI) and bump it on purpose.
 name: Docs friction log
 
 on:
@@ -38,7 +38,8 @@ jobs:
           status=0
           for page in $(git diff --name-only "origin/${BASE_REF}..." -- 'docs/**/*.md'); do
             name=$(echo "$page" | tr '/' '_')
-            uvx docfriction==0.1.0 "$page" --check-links --fail-on-severity 2.5 \
+            uvx --from git+https://github.com/Cyvid7-Darus10/docfriction@05f5ec4 docfriction \
+              "$page" --check-links --fail-on-severity 2.5 \
               --out "friction-logs/${name%.md}.md" || status=$?
           done
           exit $status

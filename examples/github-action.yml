@@ -1,0 +1,35 @@
+# Drop this into .github/workflows/docs-friction.yml in a docs repo.
+# It writes a friction log for every changed Markdown page and fails the job
+# when Jev thinks a reader would be blocked (severity >= 2.5 out of 3).
+name: Docs friction log
+
+on:
+  pull_request:
+    paths: ["docs/**/*.md"]
+
+jobs:
+  friction:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+      - name: Log friction on changed pages
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p friction-logs
+          status=0
+          for page in $(git diff --name-only origin/${{ github.base_ref }}... -- 'docs/**/*.md'); do
+            name=$(echo "$page" | tr '/' '_')
+            uvx docfriction "$page" --check-links --fail-on-severity 2.5 \
+              --out "friction-logs/${name%.md}.md" || status=$?
+          done
+          exit $status
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: friction-logs
+          path: friction-logs/

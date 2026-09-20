@@ -177,8 +177,12 @@ is; a writer still has to look at the section.
 
 | Decision | Reason |
 |---|---|
+| Friction categories adapted from Uddin & Robillard's ten API-documentation problems | Their IBM survey (323 developers) found ambiguity, incompleteness and incorrectness the severest, and unexplained examples the third most reported content problem; the rubric splits those into the forms they take on one page and adds the presentation problems fragmentation and tangling. Obsoleteness is excluded because Jev cannot know the current version |
+| Every choice option carries `what`, `not_for` and `examples`; `other` is offered | TypeSafe: options must be mutually exclusive, say what they are not for when neighbours overlap, and include a no-match option |
+| Every yes/no check carries `true` / `false` criteria | TypeSafe: add criteria when the boundary is subtle (industry terms vs product terms; "needs nothing" counts as prerequisites stated) |
+| A `reader` persona is in every state | Friction-log practice frames the walk around a persona and a goal; `--persona` lets a team test the same page for different readers |
 | One Jev call per section, all rubric questions batched | TypeSafe's speculative fan-out pattern: batching is cheaper and faster, and questions cannot see each other anyway |
-| Each state includes a clipped `previous_section_summary` | Friction is usually about what an earlier step did or did not establish; but large irrelevant state degrades Jev, so the summary is capped at 800 chars |
+| State carries the previous section's text and first code block, the titles of all earlier sections, and the next section's title | Prerequisites are usually established by code, not prose; a "Verify" section right after a step is where its expected result lives; but large irrelevant state degrades Jev, so text is capped at 800 chars and code at 300 |
 | Sections truncated at 6,000 chars | ~32k token ceiling per question+state; keeps the state focused |
 | `friction_type` choice includes `no_friction` | TypeSafe: "include a no-match outcome when nothing may fit" |
 | Severity levels describe what the reader does, not adjectives | TypeSafe: "describe situations, not degrees" |
@@ -201,13 +205,18 @@ is; a writer still has to look at the section.
 - **Executable steps.** Combine with a browser or shell runner
   (`jev-agent-browser`, `agent-browser`) so "did the command actually work"
   is observed rather than judged.
-- **Persona conditioning.** Add a `persona` field to state ("first-time
-  user, no cloud experience") and see whether Jev's severities shift
-  sensibly.
+- **Persona sensitivity.** `--persona` exists; measure whether Jev's severities
+  shift sensibly between "first-time user" and "experienced operator" on the
+  same page.
 - **Trend tracking.** Store JSON reports per commit and chart severity over
   time per page.
 
 ## Sources
+
+- Uddin & Robillard, "How API Documentation Fails", IEEE Software 32(4), 2015: https://www.cs.mcgill.ca/~martin/papers/ieeesw2015.pdf
+- Aghajani et al., "Software Documentation Issues Unveiled", ICSE 2019: https://dl.acm.org/doi/10.1109/ICSE.2019.00122
+- An introduction to friction logging (DevRel guide with the green/yellow/red scale): https://developerrelations.com/guides/an-introduction-to-friction-logging/
+- TypeSafe primitives and patterns: https://docs.typesafe.ai/primitives/choice.md, https://docs.typesafe.ai/primitives/noul.md, https://docs.typesafe.ai/primitives/advanced.md, https://docs.typesafe.ai/confidence.md, https://docs.typesafe.ai/patterns/fan-out.md, https://docs.typesafe.ai/concepts/how-to-build-with-system-one.md
 
 - TypeSafe docs: https://docs.typesafe.ai (quickstart, primitives, patterns, cookbooks, model jaggedness, API reference)
 - TypeSafe agent skill: https://github.com/typesafe-ai/skills

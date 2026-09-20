@@ -8,6 +8,16 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Rubric rebuilt on the research. Friction categories now adapt Uddin and
+  Robillard's API-documentation problems (adds `unexplained_example`,
+  `fragmented_step`, `tangled_section`, and an `other` option); every choice
+  option carries `what` / `not_for` / `examples` and every yes/no check carries
+  `true` / `false` criteria, per TypeSafe's guidance. `code_matches_prose` is
+  split into behaviour and identifier checks. The state now includes a reader
+  persona (`--persona`), all earlier section titles, the previous section's
+  first code block, and the next section's title. Library callers pass a
+  `StepContext` instead of the previous segment.
+
 - Sentiment label `pause` is now `hesitant`, so all four reader states are
   adjectives. Reports and the JSON `sentiment` field change accordingly.
 - Error messages say what to do next: a missing key points at typesafe.ai, a

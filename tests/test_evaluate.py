@@ -18,8 +18,16 @@ from docfriction.evaluate import (
     sentiment_for,
 )
 from docfriction.jev import parse_result
-from docfriction.models import Document, Segment
-from docfriction.rubric import NO_FRICTION, build_questions, build_state
+from docfriction.models import CodeBlock, Document, Segment
+from docfriction.rubric import (
+    CHECKS,
+    FRICTION_TYPES,
+    NO_FRICTION,
+    OTHER_FRICTION,
+    StepContext,
+    build_questions,
+    build_state,
+)
 from docfriction.segment import segment_markdown
 
 
@@ -91,32 +99,86 @@ def test_actionable_only_checks_are_skipped_for_reference_sections():
     }
 
 
-def test_build_state_and_questions_follow_the_rubric():
+def test_build_state_carries_reader_context():
     segments = segment_markdown(SAMPLE_MARKDOWN)
-    state = build_state(segments[2], segments[1], "Quickstart")
-    assert state["section_path"] == "Quickstart > Configure"
-    assert state["previous_section_summary"].startswith("Quickstart > Install:")
-    long_previous = Segment(0, ("Long",), "word " * 400)
-    assert build_state(segments[2], long_previous, "Q")["previous_section_summary"].endswith(
-        "[... section truncated by docfriction ...]"
+    context = StepContext(
+        previous=segments[1],
+        next_title=segments[3].title,
+        earlier_titles=(segments[0].title, segments[1].title),
+        persona="A data scientist who has never used a terminal",
     )
+    state = build_state(segments[2], context, "Quickstart")
+    assert state["reader"] == "A data scientist who has never used a terminal"
+    assert state["section_path"] == "Quickstart > Configure"
+    assert state["earlier_section_titles"] == ["Quickstart", "Quickstart > Install"]
+    assert state["previous_section"] == {
+        "title": "Quickstart > Install",
+        "text": "Install the CLI with npm.",
+        "code": "npm install -g widget-cli",
+    }
+    assert state["next_section_title"] == "Quickstart > Configure > Verify"
     assert state["placeholders"] == ["<project-id>", "YOUR_API_KEY"]
     assert state["code_blocks"][0]["language"] == "unspecified"
+
+    first = build_state(segments[0], StepContext(), "Quickstart")
+    assert "first section" in first["previous_section"]
+    assert "last section" in first["next_section_title"]
+    assert "code_blocks" not in first
+
+    long_previous = Segment(0, ("Long",), "word " * 400, (CodeBlock("sh", "x" * 500),))
+    clipped = build_state(segments[2], StepContext(previous=long_previous), "Q")
+    assert clipped["previous_section"]["text"].endswith(
+        "[... section truncated by docfriction ...]"
+    )
+    assert clipped["previous_section"]["code"].endswith(
+        "[... section truncated by docfriction ...]"
+    )
+
+
+def test_build_questions_follow_typesafe_guidance():
+    segments = segment_markdown(SAMPLE_MARKDOWN)
     questions = build_questions(segments[2])
     assert {
         "friction_type",
         "severity",
         "is_actionable",
+        "prerequisites_stated",
+        "expected_result_shown",
+        "terms_defined",
         "code_matches_prose",
+        "code_names_match_prose",
         "placeholders_explained",
-    } <= set(questions)
-    assert questions["friction_type"]["criteria"][NO_FRICTION]
+    } == set(questions)
+    criteria = questions["friction_type"]["criteria"]
+    assert NO_FRICTION in criteria and OTHER_FRICTION in criteria
+    for key, option in criteria.items():
+        assert set(option) == {"what", "not_for", "examples"}, key
+    assert questions["friction_type"]["instructions"]["focus"]
     assert len(questions["severity"]["criteria"]) == 4
+    assert questions["prerequisites_stated"]["criteria"].keys() == {"true", "false"}
 
-    first = build_state(segments[0], None, "Quickstart")
-    assert "first section" in first["previous_section_summary"]
-    assert "code_blocks" not in first
-    assert "code_matches_prose" not in build_questions(segments[0])
+    concept_only = build_questions(segments[0])
+    assert "code_matches_prose" not in concept_only
+    assert "placeholders_explained" not in concept_only
+
+
+def test_rubric_registry_is_consistent():
+    assert len({kind.key for kind in FRICTION_TYPES}) == len(FRICTION_TYPES)
+    assert len({check.key for check in CHECKS}) == len(CHECKS)
+    for kind in FRICTION_TYPES:
+        if kind.key not in (NO_FRICTION,):
+            assert kind.detail, kind.key
+    for check in CHECKS:
+        if check.key != "is_actionable":
+            assert check.detail, check.key
+
+
+def test_other_friction_is_reported_with_a_readable_detail():
+    _, findings = interpret_answers(
+        answers_from({"friction_type": choice_answer(OTHER_FRICTION, 0.7)}), Thresholds()
+    )
+    assert findings[0].check == OTHER_FRICTION
+    assert "no category" in findings[0].detail
 
 
 def test_evaluate_document_end_to_end_with_mocked_jev_and_links(make_client, monkeypatch):

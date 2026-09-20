@@ -11,6 +11,7 @@ from .evaluate import EvaluateOptions, evaluate_document
 from .fetch import FetchError, load_document
 from .jev import DEFAULT_MODEL, JevClient, JevError
 from .report import render_json, render_markdown
+from .rubric import DEFAULT_PERSONA
 from .segment import segment_markdown
 
 EXIT_OK = 0
@@ -29,6 +30,11 @@ def build_parser() -> argparse.ArgumentParser:
         "-f", "--format", choices=("md", "json"), default="md", help="report format (default: md)"
     )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Jev model id (default: jev-latest)")
+    parser.add_argument(
+        "--persona",
+        default=DEFAULT_PERSONA,
+        help="who the reader is, in one sentence; Jev judges every step through their eyes",
+    )
     parser.add_argument(
         "--check-links",
         action="store_true",
@@ -71,6 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     options = EvaluateOptions(
         check_links=args.check_links,
         allow_private_links=args.allow_private_links,
+        persona=args.persona,
         max_sections=args.max_sections,
         concurrency=args.concurrency,
     )

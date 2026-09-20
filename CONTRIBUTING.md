@@ -56,8 +56,10 @@ which the existing questions do:
 - Anything Jev is bad at (counting, comparing, following links) belongs in
   `checks.py`, not in a question.
 
-Add a test in `tests/test_evaluate.py` for any new check, and a line in
-`NOUL_FAILURE_DETAIL` so the report can explain it.
+A new yes/no check is one `Check(...)` entry in `CHECKS`: statement, `when_true`,
+`when_false`, and the `detail` the report shows when it fails. A new friction
+category is one `FrictionType(...)` in `FRICTION_TYPES` with `what`, `not_for`
+and at least one example. Add a test in `tests/test_evaluate.py` either way.
 
 ## Pull requests
 

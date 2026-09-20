@@ -13,11 +13,12 @@ from .checks import check_links, link_client, static_findings
 from .jev import JevClient
 from .models import JEV_SOURCE, Answer, Document, Finding, FrictionLog, Segment, StepLog
 from .rubric import (
-    ACTIONABLE_ONLY,
-    FRICTION_TYPES,
+    CHECKS_BY_KEY,
+    DEFAULT_PERSONA,
+    FRICTION_BY_KEY,
     IS_ACTIONABLE,
     NO_FRICTION,
-    NOUL_FAILURE_DETAIL,
+    StepContext,
     build_questions,
     build_state,
 )
@@ -51,6 +52,7 @@ class EvaluateOptions:
     allow_private_links: bool = False
     max_sections: int | None = None
     concurrency: int = 4
+    persona: str = DEFAULT_PERSONA
 
 
 def evaluate_document(
@@ -69,8 +71,13 @@ def evaluate_document(
     )
 
     def run(index: int) -> StepLog:
-        previous = segments[index - 1] if index else None
-        return evaluate_segment(segments[index], previous, document.title, client, opts, links)
+        context = StepContext(
+            previous=segments[index - 1] if index else None,
+            next_title=segments[index + 1].title if index + 1 < len(segments) else None,
+            earlier_titles=tuple(segment.title for segment in segments[:index]),
+            persona=opts.persona,
+        )
+        return evaluate_segment(segments[index], context, document.title, client, opts, links)
 
     try:
         with ThreadPoolExecutor(max_workers=max(1, opts.concurrency)) as pool:
@@ -89,13 +96,13 @@ def evaluate_document(
 
 def evaluate_segment(
     segment: Segment,
-    previous: Segment | None,
+    context: StepContext,
     page_title: str,
     client: JevClient,
     options: EvaluateOptions,
     links: httpx.Client | None = None,
 ) -> StepLog:
-    result = client.evaluate(build_state(segment, previous, page_title), build_questions(segment))
+    result = client.evaluate(build_state(segment, context, page_title), build_questions(segment))
     severity, jev_findings = interpret_answers(result.answers, options.thresholds)
     link_findings = check_links(segment.links, links) if links is not None else ()
     return StepLog(
@@ -121,8 +128,8 @@ def interpret_answers(
         *(
             finding
             for key, answer in answers.items()
-            if answer.type == "noul" and key in NOUL_FAILURE_DETAIL
-            if is_actionable or key not in ACTIONABLE_ONLY
+            if answer.type == "noul" and key in CHECKS_BY_KEY and key != IS_ACTIONABLE
+            if is_actionable or not CHECKS_BY_KEY[key].actionable_only
             for finding in _noul_findings(key, answer, thresholds)
         ),
     ]
@@ -149,7 +156,7 @@ def _friction_type_findings(answer: Answer | None, thresholds: Thresholds) -> tu
         Finding(
             check=str(answer.value),
             source=JEV_SOURCE,
-            detail=FRICTION_TYPES.get(str(answer.value), str(answer.value)),
+            detail=FRICTION_BY_KEY[str(answer.value)].detail,
             probability=probability,
             confidence=confidence,
             needs_review=confidence is not None and confidence < thresholds.low_confidence,
@@ -165,7 +172,7 @@ def _noul_findings(key: str, answer: Answer, thresholds: Thresholds) -> tuple[Fi
         Finding(
             check=key,
             source=JEV_SOURCE,
-            detail=NOUL_FAILURE_DETAIL[key],
+            detail=CHECKS_BY_KEY[key].detail,
             probability=probability,
             confidence=answer.confidence,
             needs_review=probability >= thresholds.noul_fail_below,

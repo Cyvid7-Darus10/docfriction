@@ -31,6 +31,8 @@ BACKOFF_BASE_SECONDS = 0.5
 USER_AGENT = f"docfriction/{__version__} (+https://github.com/Cyvid7-Darus10/docfriction)"
 
 JsonState = str | Mapping[str, Any] | Sequence[Any]
+Instructions = str | Mapping[str, Any] | Sequence[Any]
+Criterion = str | Mapping[str, Any] | Sequence[Any] | None
 
 
 class JevError(Exception):
@@ -43,16 +45,18 @@ class MissingApiKeyError(JevError):
     pass
 
 
-def noul(instructions: str, criteria: Mapping[str, str] | None = None) -> dict[str, Any]:
+def noul(
+    instructions: Instructions, criteria: Mapping[str, Criterion] | None = None
+) -> dict[str, Any]:
     question: dict[str, Any] = {"type": "noul", "instructions": instructions}
     return {**question, "criteria": dict(criteria)} if criteria else question
 
 
-def choice(instructions: str, criteria: Mapping[str, str | None]) -> dict[str, Any]:
+def choice(instructions: Instructions, criteria: Mapping[str, Criterion]) -> dict[str, Any]:
     return {"type": "choice", "instructions": instructions, "criteria": dict(criteria)}
 
 
-def score(instructions: str, levels: Sequence[str]) -> dict[str, Any]:
+def score(instructions: Instructions, levels: Sequence[Criterion]) -> dict[str, Any]:
     return {"type": "score", "instructions": instructions, "criteria": list(levels)}
 
 

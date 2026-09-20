@@ -44,7 +44,7 @@ Steps: 9 · steps with friction: 2 · max severity: 2.4/3 · Jev tokens: 4,120 i
 A full report is in [examples/sample-friction-log.md](examples/sample-friction-log.md).
 
 - **One step per heading** — each step carries its heading path, prose, code blocks and links, plus a summary of the previous section as context
-- **One Jev call per step** — friction type (eight categories plus `no_friction`), severity (four reader outcomes), and yes/no checks for prerequisites, expected result, undefined terms, code/prose match and unexplained placeholders. Every finding carries Jev's probability and confidence; uncertain answers are marked "needs review" instead of reported
+- **One Jev call per step** — friction type (ten categories from the API-documentation literature, plus `no_friction` and `other`), severity (four reader outcomes), and yes/no checks for prerequisites, expected result, undefined terms, code/prose match and unexplained placeholders, all judged through a stated reader persona. Every finding carries Jev's probability and confidence; uncertain answers are marked "needs review" instead of reported
 - **Deterministic checks for what Jev can't do** — dead links (`--check-links`), code blocks with no language tag, stub sections, placeholder detection
 - **CI gate** — `--fail-on-severity` exits 2 when any step scores past your threshold; a ready-made GitHub Actions workflow is in [`examples/`](examples/github-action.yml)
 - **Cheap enough to run on every change** — $0.042 per million input tokens and about 100 ms per step, so a 40-section page costs under a cent and finishes in a few seconds
@@ -68,6 +68,7 @@ docfriction docs/quickstart.md --fail-on-severity 2.5
 | `--max-sections N` | Evaluate only the first N sections |
 | `--concurrency N` | Jev requests in flight at once (default 4) |
 | `--model ID` | Pin a Jev version, e.g. `jev-1.13.0` (default `jev-latest`) |
+| `--persona TEXT` | Who the reader is, in one sentence. Default: a developer new to the product, reading top to bottom with no other page open |
 | `--fail-on-severity N` | Exit 2 when any step's severity is at least N |
 | `--dry-run` | Print the detected steps and exit without calling Jev |
 
@@ -79,7 +80,7 @@ Jev doesn't generate text. You send it a state and a set of typed questions (yes
 
 | Question a human answers per step | Jev primitive docfriction uses |
 |---|---|
-| What went wrong here? | `Choice` over eight friction types plus `no_friction` |
+| What went wrong here? | `Choice` over ten friction types plus `no_friction` and `other` |
 | How bad was it? | `Score` over four situations, from "continued without noticing" to "cannot complete the step" |
 | Did the page tell me what I needed first? | `Noul` (yes/no) `prerequisites_stated` |
 | Do I know whether it worked? | `Noul` `expected_result_shown` |
@@ -92,7 +93,7 @@ Because the answers are numbers, thresholds decide what counts as a finding and 
 
 1. **Fetch.** URLs are requested with an `Accept` header that prefers Markdown, which many docs sites serve. HTML is reduced to its `<article>`/`<main>` content and converted to Markdown with fenced, language-tagged code blocks.
 2. **Segment.** The Markdown is split at ATX (`#`) and setext (underlined) headings. Each segment keeps its heading path, prose, fenced and indented code blocks, and links. Front matter and HTML comments are dropped. Prose over 6,000 characters is truncated so the Jev state stays small; Jev degrades on large irrelevant context.
-3. **Ask Jev once per step.** The state is what a reader has at that point: a summary of the previous section, the section text, the code blocks, and any placeholders the regex found. Every rubric question goes in one request. Questions that only apply to actionable steps are still asked, and only applied when `is_actionable` comes back likely.
+3. **Ask Jev once per step.** The state is what a reader has at that point: the persona, the titles of every earlier section, the previous section's text and first code block, the section text, its code blocks, any placeholders the regex found, and the next section's title. Every rubric question goes in one request. Questions that only apply to actionable steps are still asked, and only applied when `is_actionable` comes back likely.
 4. **Interpret.** Probabilities become findings through `Thresholds` in [`evaluate.py`](src/docfriction/evaluate.py). A yes/no check below 0.4 is a finding; between 0.4 and 0.6 it is "needs review". A friction type is reported when its probability is at least 0.5 and marked for review when Jev's confidence is under 0.4.
 5. **Report.** Markdown laid out like a hand-written friction log (summary table, then a walkthrough with a sentiment per step), or JSON for tooling.
 
@@ -113,7 +114,7 @@ for step in log.friction_steps:
 
 ## Tuning the rubric
 
-Everything Jev is asked lives in [`rubric.py`](src/docfriction/rubric.py). The wording follows TypeSafe's guidance: judgments in `instructions`, answers in `criteria`, score levels that describe situations rather than degrees, a `no_friction` option so the choice is never forced, and backticked references to state fields. If your docs have a house rule (say, every step must end with expected output), add a `Noul` for it and a line in `NOUL_FAILURE_DETAIL`.
+Everything Jev is asked lives in [`rubric.py`](src/docfriction/rubric.py). The friction categories adapt Uddin and Robillard's ten API-documentation problems (IEEE Software, 2015): incompleteness, ambiguity, unexplained examples, inconsistency, incorrectness, fragmentation and tangling, split into the forms they take on a single page. The wording follows TypeSafe's guidance: one judgment per question, `what` / `not_for` / `examples` on every choice option so neighbouring categories don't blur, `true` / `false` criteria on every yes/no check, score levels that describe situations rather than degrees, and `no_friction` and `other` options so the choice is never forced. If your docs have a house rule (say, every step must end with expected output), add one `Check` to `CHECKS` and it is asked, interpreted and reported automatically.
 
 The default thresholds are starting points. Next step: run docfriction on one page you know well, compare its findings with your own for 15 minutes, and adjust `Thresholds` before wiring it into CI.
 

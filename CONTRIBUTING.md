@@ -70,9 +70,8 @@ Add a test in `tests/test_evaluate.py` for any new check, and a line in
 
 ## Reporting bugs
 
-Use the bug report issue template. If the bug is about a specific docs page,
-include the URL and the output of `docfriction <url> --dry-run`, which never
-sends anything to Jev.
+1. Run `docfriction <url> --dry-run` and copy the output. It never calls Jev.
+2. Open a bug report with the page URL, the command you ran, and that output.
 
 ## Security
 

@@ -4,6 +4,14 @@ Written 2026-09-20, the day after TypeSafe announced Jev publicly. Prices,
 limits and model ids below will drift; https://docs.typesafe.ai is the primary
 source.
 
+## Summary
+
+1. Jev returns typed, calibrated answers (yes/no, choice, score) instead of text, in about 100 ms, for $0.042 per million input tokens.
+2. A friction log is a list of bounded judgments per step, so every one of them maps onto a Jev question.
+3. Jev can't count, compare, follow links or explain itself; those parts are ordinary code.
+4. Jev reads literally and isn't robust to hostile page content, so the report is a docs-quality signal only.
+5. Nothing here is validated against human friction logs yet. That is the next step.
+
 ## 1. What Jev is
 
 Jev is TypeSafe AI's "System One" model. It doesn't generate text. It takes
